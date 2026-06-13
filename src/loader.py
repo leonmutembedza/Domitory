@@ -5,7 +5,7 @@ from pathlib import Path
 
 from src.db import DatabaseConnection
 
-
+# App
 class DataLoader:
 
     def __init__(self, conn: DatabaseConnection) -> None:

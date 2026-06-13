@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from src.db import DatabaseConnection
 
+# App
 # ---------------------------------------------------------------------------
 
 _SQL_ROOMS_STUDENT_COUNT = """

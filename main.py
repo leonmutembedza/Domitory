@@ -224,6 +224,7 @@ def _log_summary(report: dict) -> None:
     
 
 # ---------------------------------------------------------------------------
+# Run App
 
 if __name__ == "__main__":
     sys.exit(main())

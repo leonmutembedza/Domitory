@@ -10,6 +10,7 @@ from psycopg2.extensions import connection
 from psycopg2.extras import RealDictCursor
 load_dotenv()
 
+# App
 # ---------------------------------------------------------------------------
 
 class DatabaseConfig:
