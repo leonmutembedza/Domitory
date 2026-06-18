@@ -5,18 +5,13 @@ import logging
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+from src.database.db import DatabaseConfig, DatabaseConnection
+from src.database.schema import SchemaManager
+from src.ingestion.loader import DataLoader
+from src.reporting.serializer import SerializerFactory
+from src.repository.queries import QueryRepository
 
-from src.db import DatabaseConfig, DatabaseConnection
-from src.schema import SchemaManager
-from src.loader import DataLoader
-from src.queries import QueryRepository
-from src.serializer import SerializerFactory
-
-
-# ---------------------------------------------------------------------------
 # Logging Configuration
-# ---------------------------------------------------------------------------
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,47 +21,56 @@ logging.basicConfig(
 logger = logging.getLogger("dormitory")
 
 
-# ---------------------------------------------------------------------------
+# Argument Parser Configuration
+
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description="Dormitory Pipeline"
-    )
+    """
+    Create and configure the command-line argument parser.
 
-    p.add_argument("--students", required=True,
-                   help="Path to students JSON file")
-    p.add_argument("--rooms", required=True,
-                   help="Path to rooms JSON file")
+    Returns:
+        Configured ArgumentParser instance.
+    """
+
+    p = argparse.ArgumentParser(description="Dormitory Pipeline")
+
+    p.add_argument("--students", required=True, help="Path to students JSON file")
+    p.add_argument("--rooms", required=True, help="Path to rooms JSON file")
 
     p.add_argument(
         "--format",
         required=True,
         choices=SerializerFactory.supported_formats(),
-        help="Output format: json | xml"
+        help="Output format: json | xml",
     )
 
     p.add_argument(
         "--output",
         default=None,
-        help="Output file path (default: output/report.<format>)"
+        help="Output file path (default: output/report.<format>)",
     )
 
     # Database arguments
-    p.add_argument("--host", default="localhost")
-    p.add_argument("--port", default=5435, type=int)
-    p.add_argument("--user", default="postgres")
-    p.add_argument("--password", default="postgres")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", default=5432, type=int)
+    p.add_argument("--user", default="")
+    p.add_argument("--password", default="")
     p.add_argument("--database", default="postgres")
 
     return p
 
 
-# ---------------------------------------------------------------------------
+def build_report(repo: QueryRepository, schema: SchemaManager) -> dict:
+    """
+    Build the final report by executing analytical queries.
 
-def build_report(
-    repo: QueryRepository,
-    schema: SchemaManager
-) -> dict:
+    Args:
+        repo: Repository used to execute queries.
+        schema: Schema manager providing index information.
+
+    Returns:
+        Dictionary containing all report sections.
+    """
 
     return {
         "rooms_with_student_count": repo.rooms_with_student_count(),
@@ -77,9 +81,18 @@ def build_report(
     }
 
 
-# ---------------------------------------------------------------------------
-
 def main() -> int:
+    """
+    Execute the dormitory data pipeline.
+
+    Creates the database schema, loads data,
+    generates analytical reports and writes
+    them to the selected output format.
+
+    Returns:
+        Exit code.
+    """
+
     args = build_arg_parser().parse_args()
 
     cfg = DatabaseConfig(
@@ -100,10 +113,7 @@ def main() -> int:
         schema = SchemaManager(conn)
         schema.apply()
 
-        logger.info(
-            "Tables and indexes ready in database '%s'.",
-            args.database
-        )
+        logger.info("Tables and indexes ready in database '%s'.", args.database)
 
         # Load data
         loader = DataLoader(conn)
@@ -111,11 +121,7 @@ def main() -> int:
         n_rooms = loader.load_rooms(args.rooms)
         n_students = loader.load_students(args.students)
 
-        logger.info(
-            "Inserted/skipped: %s rooms, %s students.",
-            n_rooms,
-            n_students
-        )
+        logger.info("Inserted/skipped: %s rooms, %s students.", n_rooms, n_students)
 
         # Run queries
         repo = QueryRepository(conn)
@@ -124,21 +130,13 @@ def main() -> int:
         # Serialize report
         serializer = SerializerFactory.create(args.format)
 
-        output_path = Path(
-            args.output or f"output/report.{serializer.extension()}"
-        )
+        output_path = Path(args.output or f"output/report.{serializer.extension()}")
 
-        output_path.parent.mkdir(
-            parents=True,
-            exist_ok=True
-        )
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
         serializer.write(report, output_path)
 
-        logger.info(
-            "Report written to: %s",
-            output_path
-        )
+        logger.info("Report written to: %s", output_path)
 
         # Log report summary
         _log_summary(report)
@@ -154,9 +152,14 @@ def main() -> int:
     return 0
 
 
-# ---------------------------------------------------------------------------
-
 def _log_summary(report: dict) -> None:
+    """
+    Display report results in the console.
+
+    Args:
+        report: Generated report dictionary.
+    """
+
     sep = "-" * 60
 
     logger.info("")
@@ -166,12 +169,7 @@ def _log_summary(report: dict) -> None:
     input("\nPress Enter to review results...")
 
     for r in report["rooms_with_student_count"]:
-        logger.info(
-            "%-15s %s students",
-            r["room_name"],
-            r["student_count"]
-        )
-    
+        logger.info("%-15s %s students", r["room_name"], r["student_count"])
 
     logger.info("")
     logger.info(sep)
@@ -180,11 +178,7 @@ def _log_summary(report: dict) -> None:
     input("\nPress Enter to review results...")
 
     for r in report["five_rooms_youngest_avg_age"]:
-        logger.info(
-            "%-15s avg age %.2f yrs",
-            r["room_name"],
-            r["avg_age_years"]
-        )
+        logger.info("%-15s avg age %.2f yrs", r["room_name"], r["avg_age_years"])
 
     logger.info("")
     logger.info(sep)
@@ -193,11 +187,7 @@ def _log_summary(report: dict) -> None:
     input("\nPress Enter to review results...")
 
     for r in report["five_rooms_largest_age_diff"]:
-        logger.info(
-            "%-15s diff %.2f yrs",
-            r["room_name"],
-            r["age_diff_years"]
-        )
+        logger.info("%-15s diff %.2f yrs", r["room_name"], r["age_diff_years"])
 
     logger.info("")
     logger.info(sep)
@@ -221,9 +211,8 @@ def _log_summary(report: dict) -> None:
 
     for stmt in report["index_ddl_applied"]:
         logger.info("%s", stmt)
-    
 
-# ---------------------------------------------------------------------------
+
 # Run App
 
 if __name__ == "__main__":

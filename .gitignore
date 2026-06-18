@@ -10,3 +10,7 @@
 /output
 /data
 /db
+*.json
+*.xml
+*.coverage
+.coverage.*
