@@ -41,9 +41,8 @@ Domitory/
 │   ├── ingestion/
 │       └── loader.py
 │   ├── repository/
-│   ├── reporting
 │       └── queries.py
-│   ├── reporting
+│   ├── reporting/
 │       └── serializer.py
 │
 ├── data/
@@ -92,7 +91,7 @@ pip install -r requirements.txt
 ## Running the Application
 
 ```bash
-python main.py --students students.json --rooms rooms.json --host *Database Host* --user *Database User* --port *Database port* --password *Database Password* --database *Database Name*
+python main.py --students students.json --rooms rooms.json --host *DatabaseHost* --user *DatabaseUser* --port *DatabasePort* --password *DatabasePassword* --database *DatabaseName*
 ```
 
 The application will:
